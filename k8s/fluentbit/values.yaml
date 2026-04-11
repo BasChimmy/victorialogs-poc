@@ -1,0 +1,20 @@
+config:
+  filters: |
+    [FILTER]
+        Name                kubernetes
+        Match               kube.*
+        Merge_Log           On
+        Keep_Log            On
+        K8S-Logging.Parser  On
+        K8S-Logging.Exclude On
+
+  outputs: |
+    [OUTPUT]
+        Name            http
+        Match           *
+        Host            victorialogs.logging.svc.cluster.local
+        Port            9428
+        URI             /insert/jsonline?_stream_fields=kubernetes.namespace_name,kubernetes.pod_name,kubernetes.container_name&_msg_field=log&_time_field=time
+        Format          json_lines
+        Json_date_key   time
+        Json_date_format iso8601

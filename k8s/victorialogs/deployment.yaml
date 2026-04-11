@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: victorialogs
+  namespace: logging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: victorialogs
+  template:
+    metadata:
+      labels:
+        app: victorialogs
+    spec:
+      containers:
+        - name: victorialogs
+          image: victoriametrics/victoria-logs:latest
+          args:
+            - -storageDataPath=/vlogs-data
+            - -retentionPeriod=7d
+          ports:
+            - containerPort: 9428
+          volumeMounts:
+            - name: vlogs-data
+              mountPath: /vlogs-data
+      volumes:
+        - name: vlogs-data
+          emptyDir: {}

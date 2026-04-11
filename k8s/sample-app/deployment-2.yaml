@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-app-2
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sample-app-2
+  template:
+    metadata:
+      labels:
+        app: sample-app-2
+    spec:
+      containers:
+        - name: sample-app-2
+          image: busybox
+          command:
+            - /bin/sh
+            - -c
+            - |
+              LEVELS="error error warn info debug info"
+              MESSAGES="db_connection_failed auth_token_expired rate_limit_exceeded payment_processed health_check order_created"
+              i=0
+              while true; do
+                LEVEL=$(echo $LEVELS | tr ' ' '\n' | sed -n "$((i % 6 + 1))p")
+                MSG=$(echo $MESSAGES | tr ' ' '\n' | sed -n "$((i % 6 + 1))p")
+                echo "{\"level\":\"$LEVEL\",\"msg\":\"$MSG from pod $HOSTNAME\",\"time\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"app\":\"sample-app-2\"}";
+                i=$((i + 1))
+                sleep 5;
+              done
