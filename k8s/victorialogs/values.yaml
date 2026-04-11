@@ -1,0 +1,4 @@
+server:
+  retentionPeriod: 7d
+  persistentVolume:
+    enabled: false  # uses emptyDir for POC

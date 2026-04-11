@@ -56,14 +56,17 @@ Login with `admin` / `admin123`.
    kubectl apply -f k8s/namespace.yaml
    ```
 
-3. Deploy VictoriaLogs:
+3. Deploy VictoriaLogs via Helm:
    ```bash
-   kubectl apply -f k8s/victorialogs/
-   kubectl rollout status deployment/victorialogs --namespace logging --timeout=120s
-   kubectl wait --namespace logging --for=condition=ready pod --selector=app=victorialogs --timeout=120s
+   helm repo add victoriametrics https://victoriametrics.github.io/helm-charts
+   helm repo update
+   helm upgrade --install victorialogs victoriametrics/victoria-logs-single \
+     --namespace logging \
+     --values k8s/victorialogs/values.yaml
+   kubectl rollout status statefulset/victorialogs-victoria-logs-single-server --namespace logging --timeout=120s
    ```
 
-4. Add Helm repos:
+4. Add remaining Helm repos:
    ```bash
    helm repo add fluent https://fluent.github.io/helm-charts
    helm repo add grafana https://grafana.github.io/helm-charts
@@ -196,3 +199,6 @@ This removes all Helm releases, Kubernetes resources, and stops Minikube.
 **Fluent Bit not shipping logs**
 - Check Fluent Bit logs: `make logs-fluentbit`
 - All lines should show `HTTP status=200`. Any other status means VictoriaLogs rejected the payload.
+
+**VictoriaLogs pod not found**
+- VictoriaLogs is deployed as a StatefulSet via Helm. Check with `kubectl get statefulset -n logging` instead of looking for a Deployment.

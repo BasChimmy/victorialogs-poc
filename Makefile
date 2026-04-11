@@ -13,20 +13,19 @@ deploy:
 	@echo ">>> Applying namespace..."
 	kubectl apply -f k8s/namespace.yaml
 
-	@echo ">>> Deploying VictoriaLogs..."
-	kubectl apply -f k8s/victorialogs/
-
-	@echo ">>> Waiting for VictoriaLogs to be ready..."
-	kubectl rollout status deployment/victorialogs --namespace logging --timeout=120s
-	kubectl wait --namespace logging \
-		--for=condition=ready pod \
-		--selector=app=victorialogs \
-		--timeout=120s
-
 	@echo ">>> Adding Helm repos..."
 	helm repo add fluent https://fluent.github.io/helm-charts
 	helm repo add grafana https://grafana.github.io/helm-charts
+	helm repo add victoriametrics https://victoriametrics.github.io/helm-charts
 	helm repo update
+
+	@echo ">>> Installing VictoriaLogs..."
+	helm upgrade --install victorialogs victoriametrics/victoria-logs-single \
+		--namespace logging \
+		--values k8s/victorialogs/values.yaml
+
+	@echo ">>> Waiting for VictoriaLogs to be ready..."
+	kubectl rollout status statefulset/victorialogs-victoria-logs-single-server --namespace logging --timeout=120s
 
 	@echo ">>> Installing Fluent Bit..."
 	helm upgrade --install fluent-bit fluent/fluent-bit \
@@ -54,7 +53,7 @@ open-grafana:
 ## open-victorialogs: Port-forward VictoriaLogs UI to localhost:9428
 open-victorialogs:
 	@echo ">>> Port-forwarding VictoriaLogs to localhost:9428..."
-	kubectl port-forward svc/victorialogs 9428:9428 --namespace logging
+	kubectl port-forward svc/victorialogs-victoria-logs-single-server 9428:9428 --namespace logging
 
 ## status: Show pod status across all namespaces
 status:
@@ -76,10 +75,10 @@ cleanup:
 	@echo ">>> Removing Helm releases..."
 	helm uninstall fluent-bit --namespace logging || true
 	helm uninstall grafana --namespace logging || true
+	helm uninstall victorialogs --namespace logging || true
 
 	@echo ">>> Deleting Kubernetes resources..."
 	kubectl delete -f k8s/sample-app/ || true
-	kubectl delete -f k8s/victorialogs/ || true
 	kubectl delete -f k8s/namespace.yaml || true
 
 	@echo ">>> Stopping Minikube..."

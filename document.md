@@ -37,15 +37,15 @@ What it does:
 The key config in `k8s/fluentbit/values.yaml`:
 
 - The `kubernetes` filter merges the JSON log body into the top-level record and preserves the original `log` field (`Keep_Log On`) so VictoriaLogs can use it as the message field
-- The `http` output sends logs to `victorialogs.logging.svc.cluster.local:9428` at the `/insert/jsonline` endpoint, telling VictoriaLogs which fields to use for stream identification (`kubernetes.namespace_name`, `kubernetes.pod_name`, `kubernetes.container_name`), message (`log`), and timestamp (`time`)
+- The `http` output sends logs to `victorialogs-victoria-logs-single-server.logging.svc.cluster.local:9428` at the `/insert/jsonline` endpoint, telling VictoriaLogs which fields to use for stream identification (`kubernetes.namespace_name`, `kubernetes.pod_name`, `kubernetes.container_name`), message (`log`), and timestamp (`time`)
 
 ### VictoriaLogs (log storage)
 
-VictoriaLogs is a lightweight log database deployed as a single-replica Deployment in the `logging` namespace. It receives log data from Fluent Bit over HTTP, indexes it, and stores it on disk.
+VictoriaLogs is deployed as a single-replica StatefulSet via the `victoria-logs-single` Helm chart in the `logging` namespace. It receives log data from Fluent Bit over HTTP, indexes it, and stores it on disk.
 
-- Runs on port `9428`, exposed internally via a `ClusterIP` Service
-- Stores data in an `emptyDir` volume at `/vlogs-data` (ephemeral — data is lost if the pod restarts)
-- Retains logs for 7 days (`-retentionPeriod=7d`)
+- Runs on port `9428`, exposed internally via a `ClusterIP` Service named `victorialogs-victoria-logs-single-server`
+- Stores data in an `emptyDir` volume (ephemeral — data is lost if the pod restarts)
+- Retains logs for 7 days (`retentionPeriod: 7d`)
 - Provides a query API compatible with the VictoriaMetrics LogsQL language
 - Also exposes a built-in web UI accessible via `make open-victorialogs` (port-forward to localhost:9428)
 
@@ -110,7 +110,7 @@ To query logs, go to Explore, select the VictoriaLogs datasource, and use LogsQL
 The Makefile enforces this order via `make deploy`:
 
 1. Create the `logging` namespace
-2. Deploy VictoriaLogs and wait for it to be ready (Fluent Bit needs it as a destination)
+2. Deploy VictoriaLogs via Helm and wait for it to be ready (Fluent Bit needs it as a destination)
 3. Install Fluent Bit via Helm (starts collecting and forwarding immediately)
 4. Install Grafana via Helm (datasource is auto-provisioned)
 5. Deploy sample apps (logs start flowing through the pipeline)

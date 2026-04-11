@@ -47,8 +47,7 @@ The following tools must be installed on the local machine before running this p
 └── k8s/
     ├── namespace.yaml
     ├── victorialogs/
-    │   ├── deployment.yaml
-    │   └── service.yaml
+    │   └── values.yaml
     ├── fluentbit/
     │   └── values.yaml
     ├── grafana/
@@ -70,20 +69,21 @@ The following tools must be installed on the local machine before running this p
 
 ### 2. VictoriaLogs
 
-**Deployment**
-- Image: `victoriametrics/victoria-logs:latest`
-- Replicas: `1`
-- Port: `9428`
-- Args:
-  - `-storageDataPath=/vlogs-data`
-  - `-retentionPeriod=7d`
-- Volume: `emptyDir` mounted at `/vlogs-data`
+**Installation method:** Helm
 
-**Service**
-- Type: `ClusterIP`
-- Port: `9428`
-- Name: `victorialogs`
-- Namespace: `logging`
+```
+helm repo: https://victoriametrics.github.io/helm-charts
+chart: victoriametrics/victoria-logs-single
+namespace: logging
+release name: victorialogs
+```
+
+**Custom values (`k8s/victorialogs/values.yaml`)**
+
+- `server.retentionPeriod`: `7d`
+- `server.persistentVolume.enabled`: `false` (emptyDir — ephemeral storage)
+
+**Service name (internal):** `victorialogs-victoria-logs-single-server.logging.svc.cluster.local:9428`
 
 ---
 
@@ -103,7 +103,7 @@ release name: fluent-bit
 Output plugin:
 - Type: `http`
 - Match: `*`
-- Host: `victorialogs.logging.svc.cluster.local`
+- Host: `victorialogs-victoria-logs-single-server.logging.svc.cluster.local`
 - Port: `9428`
 - URI: `/insert/jsonline?_stream_fields=namespace,pod,container&_msg_field=log&_time_field=time`
 - Format: `json_lines`
@@ -138,7 +138,7 @@ release name: grafana
 - Datasource (provisioned automatically):
   - Name: `VictoriaLogs`
   - Type: `loki` *(VictoriaLogs is Loki-API compatible)*
-  - URL: `http://victorialogs.logging.svc.cluster.local:9428`
+  - URL: `http://victorialogs-victoria-logs-single-server.logging.svc.cluster.local:9428`
   - Access: `proxy`
   - isDefault: `true`
 
@@ -181,13 +181,12 @@ The Makefile must include the following targets:
 
 ### Setup order in `make deploy`:
 1. Apply `k8s/namespace.yaml`
-2. Apply `k8s/victorialogs/`
-3. Wait for VictoriaLogs pod to be ready
-4. Add Helm repos and update
-5. Install Fluent Bit with custom values
-6. Install Grafana with custom values
-7. Apply `k8s/sample-app/`
-8. Print access instructions
+2. Add Helm repos (fluent, grafana, victoriametrics) and update
+3. Install VictoriaLogs via Helm and wait for StatefulSet to be ready
+4. Install Fluent Bit with custom values
+5. Install Grafana with custom values
+6. Apply `k8s/sample-app/`
+7. Print access instructions
 
 ---
 
