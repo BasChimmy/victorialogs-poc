@@ -20,13 +20,50 @@ spec:
             - /bin/sh
             - -c
             - |
-              LEVELS="error error warn info debug info"
-              MESSAGES="db_connection_failed auth_token_expired rate_limit_exceeded payment_processed health_check order_created"
-              i=0
               while true; do
-                LEVEL=$(echo $LEVELS | tr ' ' '\n' | sed -n "$((i % 6 + 1))p")
-                MSG=$(echo $MESSAGES | tr ' ' '\n' | sed -n "$((i % 6 + 1))p")
-                echo "{\"level\":\"$LEVEL\",\"msg\":\"$MSG from pod $HOSTNAME\",\"time\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"app\":\"sample-app-2\"}";
-                i=$((i + 1))
-                sleep 5;
+                TIMESTAMP=$(date -u "+%Y-%m-%d %H:%M:%S")
+
+                case $((RANDOM % 6)) in
+                  0|1|2) LEVEL="INFO" ;;
+                  3)     LEVEL="WARN" ;;
+                  4)     LEVEL="ERROR" ;;
+                  5)     LEVEL="DEBUG" ;;
+                esac
+
+                case $((RANDOM % 4)) in
+                  0) STATUS="200" ;;
+                  1) STATUS="201" ;;
+                  2) STATUS="400" ;;
+                  3) STATUS="500" ;;
+                esac
+
+                case $((RANDOM % 4)) in
+                  0) METHOD="GET" ;;
+                  1) METHOD="POST" ;;
+                  2) METHOD="PUT" ;;
+                  3) METHOD="DELETE" ;;
+                esac
+
+                ID=$((RANDOM % 99999 + 1))
+                case $((RANDOM % 3)) in
+                  0) API="/api/notification/$ID/list/" ;;
+                  1) API="/api/email/$ID/send/" ;;
+                  2) API="/api/push/$ID/subscribe/" ;;
+                esac
+
+                DURATION=$((RANDOM % 10000 + 1))
+
+                REQUEST_ID=$(cat /proc/sys/kernel/random/uuid)
+                TRACING_ID=$(cat /proc/sys/kernel/random/uuid)
+
+                case $((RANDOM % 4)) in
+                  0) MSG="notification dispatched" ;;
+                  1) MSG="email delivery queued" ;;
+                  2) MSG="push subscription updated" ;;
+                  3) MSG="notification template rendered" ;;
+                esac
+
+                echo "{\"@timestamp\":\"$TIMESTAMP\",\"hostname\":\"bgrimmacademy.conicle.com\",\"service\":\"notification\",\"type\":\"system\",\"event\":\"http_request\",\"level\":\"$LEVEL\",\"message\":\"$MSG\",\"request_id\":\"$REQUEST_ID\",\"tracing_id\":\"$TRACING_ID\",\"context\":\"\",\"payload\":{},\"api\":{\"method\":\"$METHOD\",\"api\":\"$API\",\"status_code\":\"$STATUS\",\"duration_ms\":$DURATION}}"
+
+                sleep 5
               done

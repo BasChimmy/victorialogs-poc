@@ -8,6 +8,11 @@ config:
         K8S-Logging.Parser  On
         K8S-Logging.Exclude On
 
+    [FILTER]
+        Name    grep
+        Match   kube.*
+        Exclude $kubernetes['namespace_name'] ^(kube-node-lease|kube-public|kube-system|logging)$
+
   outputs: |
     [OUTPUT]
         Name            http
